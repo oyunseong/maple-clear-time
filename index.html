@@ -350,8 +350,9 @@ footer{margin-top:40px; padding-top:18px; border-top:1px solid var(--line);
       <button class="btn" id="add-boss">+ 보스 추가</button>
       <button class="btn" id="split-row" title="선택한 칸부터 아래를 새 행으로 옮깁니다">행 나누기</button>
       <button class="btn" id="reset-colors">색상 초기화</button>
+      <button class="btn" id="auto-colors">색상 자동 배정</button>
       <button class="btn danger" id="reset-times">초기화</button>
-      <button class="btn danger" id="reset">예시 데이터로 초기화</button>
+      <button class="btn danger" id="boss-setup">보스 자동 세팅</button>
       <span class="saved" id="saved">저장됨</span>
     </div>
     <div class="panel scroller">
@@ -474,25 +475,23 @@ footer{margin-top:40px; padding-top:18px; border-top:1px solid var(--line);
 (function(){
 "use strict";
 
-/* ===== 기본 데이터 (노션 표를 1주차 → 10주차 순으로 정렬) ===== */
+/* ===== 기본 보스 구성 ===== */
 const DEFAULT_PARTY = {
   id: "main",
   name: "본캐",
   members: [],
   weeks: 10,
   rows: [
-    {name:"림보 (노말)",  slot:-1, note:"", cells:["","","","","","","","","",""]},
-    {name:"림보 (하드)",  slot:0,  note:"", cells:["","","","","","","","","",""]},
-    {name:"발드",        slot:1,  note:"", cells:["","","","","","","","","",""]},
-    {name:"카링",        slot:2,  note:"", cells:["","","","","","","","","",""]},
-    {name:"대적자",      slot:3,  note:"", cells:["","","","","","","","","",""]},
-    {name:"세렌",        slot:4,  note:"", cells:["","","","","","","","","",""]},
-    {name:"칼로스",      slot:5,  note:"", cells:["","","","","","","","","",""]},
-    {name:"하드 스우",    slot:-1, note:"", cells:["","","","","","","","","",""]},
-    {name:"익스 스우",    slot:6,  note:"", cells:["","","","","","","","","",""]},
-    {name:"흉성",        slot:7,  note:"", cells:["","","","","","","","","",""]},
-    {name:"검은마법사",   slot:-1, note:"", cells:["","","","","","","","","",""]},
-    {name:"벨로나",      slot:-1, note:"", cells:["","","","","","","","","",""]}
+    {name:"익스 스우",       slot:0,  note:"", cells:["","","","","","","","","",""]},
+    {name:"익스 세렌",       slot:1,  note:"", cells:["","","","","","","","","",""]},
+    {name:"카오스 칼로스",    slot:2,  note:"", cells:["","","","","","","","","",""]},
+    {name:"하드 대적자",      slot:3,  note:"", cells:["","","","","","","","","",""]},
+    {name:"하드 카링",       slot:4,  note:"", cells:["","","","","","","","","",""]},
+    {name:"하드 흉성",       slot:5,  note:"", cells:["","","","","","","","","",""]},
+    {name:"노말 벨로나",      slot:6,  note:"", cells:["","","","","","","","","",""]},
+    {name:"하드 림보",       slot:7,  note:"", cells:["","","","","","","","","",""]},
+    {name:"노말 발드릭스",    slot:-1, note:"", cells:["","","","","","","","","",""]},
+    {name:"익스 검은마법사",  slot:-1, note:"", cells:["","","","","","","","","",""]}
   ]
 };
 const DEFAULT_STATE = { version:2, activeId:"main", parties:[DEFAULT_PARTY] };
@@ -978,9 +977,6 @@ function renderParties(){
   document.getElementById("pname").value = P().name;
   document.getElementById("pmembers").value = P().members.join(", ");
   document.getElementById("del-party").disabled = state.parties.length < 2;
-  /* 버튼 글자가 다음에 무슨 일이 일어나는지 말해 준다 */
-  document.getElementById("reset-colors").textContent =
-    P().grey ? "색상 자동 배정" : "색상 초기화";
   syncTitle();
 }
 
@@ -1440,16 +1436,22 @@ document.getElementById("split-row").onclick = function(){
 document.getElementById("reset-colors").onclick = function(){
   var p = P();
   var custom = p.rows.filter(function(r){ return !!r.color; }).length;
+  if(p.grey && !custom){ flash("이미 모두 회색입니다"); return; }
   p.rows.forEach(function(r){ delete r.color; });
-  if(p.grey){
-    delete p.grey;
-    assignSlots(p);
-    flash("보스마다 기본 색을 다시 배정했습니다");
-  } else {
-    p.grey = true;
-    flash(custom ? "지정한 색 " + custom + "개를 지우고 모두 회색으로 바꿨습니다"
-                 : "모든 보스를 기본 회색으로 바꿨습니다");
-  }
+  p.grey = true;
+  flash(custom ? "지정한 색 " + custom + "개를 지우고 모두 회색으로 바꿨습니다"
+               : "모든 보스를 기본 회색으로 바꿨습니다");
+  save(); renderAll();
+};
+document.getElementById("auto-colors").onclick = function(){
+  var p = P();
+  var custom = p.rows.filter(function(r){ return !!r.color; }).length;
+  if(!p.grey && !custom){ flash("이미 자동 배정 상태입니다"); return; }
+  p.rows.forEach(function(r){ delete r.color; });
+  delete p.grey;
+  assignSlots(p);
+  flash(custom ? "지정한 색 " + custom + "개를 지우고 기본 색을 다시 배정했습니다"
+               : "보스마다 기본 색을 다시 배정했습니다");
   save(); renderAll();
 };
 document.getElementById("reset-times").onclick = function(){
@@ -1468,10 +1470,18 @@ document.getElementById("reset-times").onclick = function(){
     save(); renderAll();
   });
 };
-document.getElementById("reset").onclick = function(){
-  ask("지금 만든 파티 " + state.parties.length + "개를 모두 지우고\n"
-    + "예시 데이터(본캐 · 보스 10종 · 10주차)로 되돌립니다.", "되돌리기", function(){
-    state = clone(DEFAULT_STATE); selected = new Set();
+document.getElementById("boss-setup").onclick = function(){
+  var p = P(), d = DEFAULT_PARTY, others = state.parties.length - 1;
+  var msg = "“" + p.name + "” 파티의 보스를 기본 " + d.rows.length + "종으로 다시 세팅합니다.\n"
+          + "지금 입력한 기록과 메모는 사라집니다.";
+  if(others) msg += "\n\n다른 파티 " + others + "개는 그대로 남습니다.";
+  ask(msg, "세팅하기", function(){
+    /* 활성 파티만 교체한다 — id와 이름은 유지해야 탭 선택이 유지된다 */
+    var fresh = clone(d);
+    fresh.id = p.id;
+    fresh.name = p.name;
+    state.parties[activeIdx()] = fresh;
+    selected = new Set();
     save(); renderAll();
   });
 };
