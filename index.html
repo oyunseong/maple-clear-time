@@ -115,7 +115,9 @@ body{
   background:var(--surface); border:1px solid var(--line-strong); border-radius:6px;
   padding:5px 9px; min-width:0; flex:1 1 auto;}
 .partymeta input:focus{border-color:var(--accent); outline:none;}
-#pname{width:132px; max-width:100%} #pmembers{width:224px; max-width:100%}
+#pname{width:132px; max-width:100%} #pmembers{width:196px; max-width:100%}
+#pstart{width:146px; max-width:100%}
+.partymeta input:disabled{color:var(--ink-3);}
 .partymeta .sp{margin-left:auto; display:flex; gap:8px;}
 
 /* tiles */
@@ -203,6 +205,13 @@ input.cell:hover{border-color:var(--line-strong);}
 input.cell:focus{border-color:var(--accent); background:var(--surface); outline:none;}
 input.cell.best{box-shadow:inset 0 0 0 1.5px var(--pos); background:var(--surface);}
 input.cell.approx{color:var(--ink-2); font-style:italic;}
+/* 못 잡은 주차 — 빈 칸(미진행)과 눈으로 구분된다 */
+input.cell.fail{color:var(--neg-ink); font-weight:600;
+  background:color-mix(in srgb, var(--neg) 12%, transparent);}
+input.cell.fail:focus{background:var(--surface);}
+.failbadge{font-size:10px; font-weight:600; padding:1px 6px; border-radius:4px;
+  background:color-mix(in srgb, var(--neg) 16%, transparent); color:var(--neg-ink);
+  vertical-align:1px; font-family:var(--font-ui);}
 .rowdel{border:0; background:none; color:var(--ink-3); font-size:15px; line-height:1;
   padding:2px 5px; border-radius:5px; margin-left:auto;}
 .rowdel:hover{background:var(--surface-3); color:var(--neg-ink);}
@@ -418,6 +427,7 @@ body.ro .partymeta input{background:var(--surface-2); color:var(--ink-3);
   <div class="partymeta">
     <label for="pname">파티 이름 <input id="pname" maxlength="24" placeholder="본캐"></label>
     <label for="pmembers">파티원 <input id="pmembers" placeholder="쉼표로 구분"></label>
+    <label for="pstart">1주차 시작일 <input type="date" id="pstart"></label>
     <span class="sp">
       <button class="btn" id="dup-party">이 파티 복제</button>
       <button class="btn danger" id="del-party">파티 삭제</button>
@@ -448,6 +458,8 @@ body.ro .partymeta input{background:var(--surface-2); color:var(--ink-3);
       입력 형식 <code>13:30</code> · <code>13분 30초</code> · <code>810</code>(초) · <code>13</code>(분) ·
       초를 모르면 <code>15:XX</code>. 초록 테두리는 그 보스의 최고 기록입니다.
       보스 이름 왼쪽의 <b>색 상자</b>를 눌러 그래프 색을 직접 고를 수 있습니다.
+      <br>돌았는데 못 잡았으면 <code>x</code> · <code>실패</code> · <code>전멸</code> — 빈 칸(미진행)과
+      따로 세고, 평균과 최고 기록에는 들어가지 않습니다.
       <br>칸 이동 <code>↑</code> <code>↓</code> <code>Enter</code> · 같은 줄은 <code>Tab</code>
       또는 글자 끝에서 <code>←</code> <code>→</code>
       <br>맨 왼쪽 <b>⠿</b> 손잡이를 끌면 보스 순서가 바뀝니다 — 손잡이에 초점을 두고
@@ -755,6 +767,7 @@ function normParty(p, i){
     rows: rows
   };
   if(p.grey) out.grey = true;
+  if(parseDay(p.start) !== null) out.start = String(p.start);
   return out;
 }
 function normalize(d){
@@ -774,6 +787,53 @@ function normalize(d){
   return {version:2, activeId:active, parties:parties};
 }
 
+
+/* ===== 주차 날짜 ===== */
+/* 파티에 1주차 시작일이 있으면 주차마다 날짜가 붙는다 — 없으면 예전처럼 번호만 쓴다.
+   더하기는 UTC 로만 한다. 로컬 시간대로 7일을 더하면 서머타임 경계에서 하루가 밀린다 */
+function parseDay(s){
+  var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s == null ? "" : s));
+  if(!m) return null;
+  var y = +m[1], mo = +m[2] - 1, d = +m[3];
+  var ms = Date.UTC(y, mo, d), t = new Date(ms);
+  /* 2월 30일 같은 값은 Date.UTC 가 조용히 굴려 버린다 — 되돌려 확인한다 */
+  if(t.getUTCFullYear() !== y || t.getUTCMonth() !== mo || t.getUTCDate() !== d) return null;
+  return ms;
+}
+function md(ms){ var d = new Date(ms); return (d.getUTCMonth()+1) + "/" + d.getUTCDate(); }
+function weekFrom(p, w){
+  var base = parseDay((p || P()).start);
+  return base === null ? null : base + w*7*86400000;
+}
+/* 표 머리처럼 좁은 곳 — 시작일만 */
+function weekShort(p, w){
+  var t = weekFrom(p, w);
+  return t === null ? "" : md(t);
+}
+/* 툴팁처럼 넓은 곳 — 한 주의 처음과 끝 */
+function weekRange(p, w){
+  var t = weekFrom(p, w);
+  return t === null ? "" : md(t) + "~" + md(t + 6*86400000);
+}
+function weekTag(p, w){
+  var r = weekRange(p, w);
+  return (w+1) + "주차" + (r ? " · " + r : "");
+}
+/* 파티 전체가 걸친 기간 */
+function spanText(p){
+  p = p || P();
+  var a = weekFrom(p, 0);
+  if(a === null) return "";
+  return md(a) + "~" + md(weekFrom(p, p.weeks-1) + 6*86400000);
+}
+
+/* ===== 실패 표기 ===== */
+/* 빈 칸은 "안 돌았다", 이건 "돌았는데 못 잡았다" — 둘을 섞으면 평균이 거짓말을 한다.
+   15:XX 의 X 와 헷갈리지 않도록 숫자가 하나도 없는 칸만 실패로 본다 */
+var FAIL_RE = /^(x|f|실패|전멸|물몹)$/i;
+function isFail(raw){
+  return raw != null && FAIL_RE.test(String(raw).trim());
+}
 /* ===== 시간 파싱 / 포맷 ===== */
 function parse(raw){
   if(raw == null) return null;
@@ -822,12 +882,13 @@ function weekTotals(p){
   p = p || P();
   var out = [];
   for(var w = 0; w < p.weeks; w++){
-    var sum = 0, n = 0;
+    var sum = 0, n = 0, f = 0;
     p.rows.forEach(function(r){
       var v = parse(r.cells[w]);
       if(v){ sum += v.sec; n++; }
+      else if(isFail(r.cells[w])) f++;
     });
-    out.push({w:w, sec:sum, n:n});
+    out.push({w:w, sec:sum, n:n, f:f});
   }
   return out;
 }
@@ -866,16 +927,18 @@ function streak(s){
 /* ===== 파생 계산 ===== */
 function series(row, p){ p = p || P(); return row.cells.slice(0, p.weeks).map(parse); }
 function stats(row, p){
-  var t = series(row, p), pts = [];
+  p = p || P();
+  var t = series(row, p), pts = [], fails = 0;
+  for(var k = 0; k < p.weeks; k++) if(isFail(row.cells[k])) fails++;
   t.forEach(function(v,i){ if(v) pts.push({w:i, sec:v.sec, approx:v.approx}); });
-  if(!pts.length) return {pts:[], n:0};
+  if(!pts.length) return {pts:[], n:0, fails:fails};
   var first = pts[0], last = pts[pts.length-1];
   var best = pts.reduce(function(a,b){ return b.sec < a.sec ? b : a; });
   var avg = pts.reduce(function(a,b){ return a + b.sec; }, 0) / pts.length;
   var delta = last.sec - first.sec;
   var prev = pts.length > 1 ? pts[pts.length-2] : null;
   return {
-    pts:pts, n:pts.length, first:first, last:last, best:best, avg:avg,
+    pts:pts, n:pts.length, fails:fails, first:first, last:last, best:best, avg:avg,
     delta:delta, rate: first.sec ? (delta/first.sec)*100 : 0,
     prevDelta: prev ? last.sec - prev.sec : null
   };
@@ -961,13 +1024,18 @@ function renderTiles(){
      cls: has && totalDelta < 0 ? "down" : has && totalDelta > 0 ? "up" : ""},
     {k: cur ? (lastWeek+1) + "주차 총 소요시간" : "주간 총 소요시간",
      v: cur ? fmtHMS(cur.sec) : "—",
-     s: cur ? "보스 " + cur.n + "종 합계" : "기록을 입력하면 표시됩니다", cls:""},
+     s: cur ? "보스 " + cur.n + "종 합계"
+            + (weekRange(P(), lastWeek) ? " · " + weekRange(P(), lastWeek) : "")
+          : "기록을 입력하면 표시됩니다", cls:""},
     {k:"평균 증감률", v: has ? pct(avgRate) : "—",
      s: has ? trend.length + "개 보스 평균 (첫 기록 대비)" : "아직 비교할 기록이 없습니다",
      cls: has && avgRate < 0 ? "down" : has && avgRate > 0 ? "up" : ""},
     {k: lastWeek >= 0 ? (lastWeek+1) + "주차 신기록" : "신기록",
      v: lastWeek >= 0 ? records + " / " + ran : "—",
-     s: lastWeek >= 0 ? "진행한 보스 중 최고 기록 경신" : "기록을 입력하면 표시됩니다",
+     s: lastWeek >= 0
+        ? "진행한 보스 중 최고 기록 경신"
+          + (cur && cur.f ? " · <span style=\"color:var(--neg-ink)\">실패 " + cur.f + "종</span>" : "")
+        : "기록을 입력하면 표시됩니다",
      cls: records ? "down" : ""}
   ];
   document.getElementById("tiles").innerHTML = tiles.map(function(t){
@@ -977,7 +1045,8 @@ function renderTiles(){
   }).join("");
 
   document.getElementById("meta-range").textContent =
-    "1–" + P().weeks + "주차 · 보스 " + P().rows.length + "종";
+    "1–" + P().weeks + "주차 · 보스 " + P().rows.length + "종"
+    + (spanText(P()) ? " · " + spanText(P()) : "");
 }
 
 /* 제목은 지금 보고 있는 파티를 따라간다 */
@@ -1085,13 +1154,18 @@ function renderTotals(){
            + 'font-family="IBM Plex Mono, monospace">'+fmtHMS(t.sec)+'</text>';
       }
     } else {
+      /* 못 잡기만 한 주차는 안 돈 주차와 다르다 — 바닥선을 붉게 둔다 */
       g += '<line x1="'+(x-bw/2).toFixed(1)+'" y1="'+(PAD.t+ih)+'" x2="'+(x+bw/2).toFixed(1)
-         + '" y2="'+(PAD.t+ih)+'" stroke="var(--line-strong)" stroke-width="2"/>';
+         + '" y2="'+(PAD.t+ih)+'" stroke="'+(t.f ? "var(--neg)" : "var(--line-strong)")
+         + '" stroke-width="2"/>';
     }
+    var sub = t.n ? t.n + "종" : t.f ? "실패 " + t.f : "—";
+    var wk = weekShort(P(), t.w);
     g += '<text x="'+x.toFixed(1)+'" y="'+(PAD.t+ih+18)+'" text-anchor="middle" font-size="11" '
-       + 'fill="var(--ink-3)" font-family="IBM Plex Mono, monospace">'+(t.w+1)+'</text>'
+       + 'fill="var(--ink-3)" font-family="IBM Plex Mono, monospace">'
+       + (wk ? esc(wk) : (t.w+1)) + '</text>'
        + '<text x="'+x.toFixed(1)+'" y="'+(PAD.t+ih+33)+'" text-anchor="middle" font-size="10" '
-       + 'fill="var(--ink-3)">'+(t.n ? t.n + "종" : "—")+'</text>';
+       + 'fill="'+(!t.n && t.f ? "var(--neg-ink)" : "var(--ink-3)")+'">'+sub+'</text>';
   });
   g += '<line x1="'+PAD.l+'" y1="'+(PAD.t+ih)+'" x2="'+(PAD.l+iw)+'" y2="'+(PAD.t+ih)
      + '" stroke="var(--line-strong)" stroke-width="1"/>';
@@ -1103,10 +1177,12 @@ function renderTotals(){
     var sx = (e.clientX - r.left) / r.width * W;
     var w = Math.max(0, Math.min(N-1, Math.floor((sx - PAD.l)/band)));
     var t = tt[w];
-    tip.innerHTML = '<div class="th">'+(w+1)+'주차</div>'
+    tip.innerHTML = '<div class="th">'+esc(weekTag(P(), w))+'</div>'
       + '<div class="tr"><span class="nm">총 소요시간</span><span class="vl">'
       + (t.n ? fmtHMS(t.sec) : "—") + '</span></div>'
-      + '<div class="tr"><span class="nm">진행 보스</span><span class="vl">'+t.n+'종</span></div>';
+      + '<div class="tr"><span class="nm">진행 보스</span><span class="vl">'+t.n+'종</span></div>'
+      + (t.f ? '<div class="tr"><span class="nm">실패</span>'
+             + '<span class="vl" style="color:var(--neg-ink)">'+t.f+'종</span></div>' : '');
     tip.style.opacity = "1";
     var px = X(w) / W * r.width;
     tip.style.left = Math.max(4, Math.min(px + 14, box.clientWidth - tip.offsetWidth - 4)) + "px";
@@ -1129,6 +1205,8 @@ function renderParties(){
   document.getElementById("pmembers").value = P().members.join(", ");
   document.getElementById("pname").disabled = RO;
   document.getElementById("pmembers").disabled = RO;
+  document.getElementById("pstart").value = P().start || "";
+  document.getElementById("pstart").disabled = RO;
   document.getElementById("del-party").disabled = state.parties.length < 2;
   syncTitle();
 }
@@ -1138,7 +1216,11 @@ function renderGrid(){
   var order = weekOrder();
   var ro = RO ? " readonly" : "";
   var h = "<thead><tr><th class='stick'>보스</th>";
-  order.forEach(function(w){ h += "<th class='wk'>"+(w+1)+"<span>주차</span></th>"; });
+  order.forEach(function(w){
+    var ws = weekShort(P(), w);
+    h += "<th class='wk' title=\""+esc(weekTag(P(), w))+"\">"+(w+1)
+       + "<span>"+(ws || "주차")+"</span></th>";
+  });
   h += "</tr></thead><tbody>";
   P().rows.forEach(function(r, ri){
     var s = stats(r);
@@ -1159,9 +1241,10 @@ function renderGrid(){
       var raw = r.cells[w] || "", p = parse(raw);
       var cls = "cell"
         + (p && s.n > 1 && w === s.best.w ? " best" : "")
-        + (p && p.approx ? " approx" : "");
+        + (p && p.approx ? " approx" : "")
+        + (!p && isFail(raw) ? " fail" : "");
       h += "<td><input class='"+cls+"' value=\""+esc(raw)+"\" placeholder='—' data-r='"+ri+"' data-w='"+w+"' "
-         + "aria-label=\""+esc(r.name)+" "+(w+1)+"주차\""+ro+"></td>";
+         + "aria-label=\""+esc(r.name)+" "+esc(weekTag(P(), w))+"\""+ro+"></td>";
     });
     h += "</tr>";
   });
@@ -1212,9 +1295,11 @@ function renderTrend(){
   }
   for(var w = 0; w < N; w++){
     g += '<text x="'+X(w).toFixed(1)+'" y="'+(PAD.t+ih+22)+'" text-anchor="middle" font-size="11" '
-       + 'fill="var(--ink-3)" font-family="IBM Plex Mono, monospace">'+(w+1)+'</text>';
+       + 'fill="var(--ink-3)" font-family="IBM Plex Mono, monospace">'
+       + (weekShort(P(), w) ? esc(weekShort(P(), w)) : (w+1)) + '</text>';
   }
-  g += '<text x="'+(PAD.l+iw/2)+'" y="'+(H-4)+'" text-anchor="middle" font-size="10.5" fill="var(--ink-3)">주차</text>';
+  g += '<text x="'+(PAD.l+iw/2)+'" y="'+(H-4)+'" text-anchor="middle" font-size="10.5" '
+     + 'fill="var(--ink-3)">' + (spanText(P()) ? '주차 · ' + esc(spanText(P())) : '주차') + '</text>';
 
   var DASH = ["", "7 4", "2 3", "11 3 2 3"];
   var gi = 0;
@@ -1265,11 +1350,13 @@ function renderTrend(){
     var rows = active.map(function(a){
       var p = null;
       a.s.pts.forEach(function(q){ if(q.w === w) p = q; });
+      /* 기록이 없는 칸이 "안 돔"인지 "못 잡음"인지 구분해서 보여 준다 */
+      var vl = p ? (p.approx ? "≈" : "") + fmt(p.sec)
+             : isFail(a.r.cells[w]) ? '<span style="color:var(--neg-ink)">실패</span>' : "—";
       return '<div class="tr"><span class="dot" style="background:'+colorOf(a.i)+';border-radius:50%"></span>'
-        + '<span class="nm">'+esc(bname(a.r))+'</span><span class="vl">'
-        + (p ? (p.approx ? "≈" : "") + fmt(p.sec) : "—") + '</span></div>';
+        + '<span class="nm">'+esc(bname(a.r))+'</span><span class="vl">' + vl + '</span></div>';
     }).join("");
-    tip.innerHTML = '<div class="th">'+(w+1)+'주차</div>'
+    tip.innerHTML = '<div class="th">'+esc(weekTag(P(), w))+'</div>'
       + (rows || '<div class="tr"><span class="nm">선택된 보스 없음</span></div>');
     tip.style.opacity = "1";
     var px = X(w) / W * r.width;
@@ -1318,7 +1405,11 @@ function renderBars(){
 function renderMatrix(){
   var order = weekOrder();
   var h = "<thead><tr><th class='stick'>보스</th><th class='wk'>누적</th>";
-  order.forEach(function(w){ h += "<th class='wk'>"+(w+1)+"<span>주차</span></th>"; });
+  order.forEach(function(w){
+    var ws = weekShort(P(), w);
+    h += "<th class='wk' title=\""+esc(weekTag(P(), w))+"\">"+(w+1)
+       + "<span>"+(ws || "주차")+"</span></th>";
+  });
   h += "</tr></thead><tbody>";
 
   var maxAbs = 1;
@@ -1381,10 +1472,11 @@ function renderDetail(){
     var k = s.n > 1 ? streak(s) : 0;
     var nameCell = "<td class='name'>" + esc(bname(r))
       + (k > 1 ? " <span class='streak'>" + k + "주 연속↓</span>" : "")
+      + (s.fails ? " <span class='failbadge'>실패 " + s.fails + "</span>" : "")
       + (r.note ? "<small>"+esc(r.note)+"</small>" : "") + "</td>";
     if(!s.n){
       h += "<tr>"+nameCell+"<td colspan='9' style='text-align:left;color:var(--ink-3);"
-         + "font-family:inherit'>기록 없음</td></tr>";
+         + "font-family:inherit'>" + (s.fails ? "클리어 기록 없음 — 실패 " + s.fails + "회" : "기록 없음") + "</td></tr>";
       return;
     }
     function cls(v){ return v === null ? "z" : v < 0 ? "p" : v > 0 ? "n" : "z"; }
@@ -1394,7 +1486,7 @@ function renderDetail(){
       + "<td>"+(s.first.approx?"≈":"")+fmt(s.first.sec)+"</td>"
       + "<td style='font-weight:600'>"+(s.last.approx?"≈":"")+fmt(s.last.sec)+"</td>"
       + "<td style='color:var(--pos-ink)'>"+fmt(s.best.sec)
-      + "<small class='sub'>"+(s.best.w+1)+"주차</small></td>"
+      + "<small class='sub'>"+(weekShort(P(), s.best.w) || (s.best.w+1)+"주차")+"</small></td>"
       + "<td style='color:var(--ink-2)'>"+fmt(s.avg)+"</td>"
       + "<td style='color:" + (back && back.sec ? "var(--neg-ink)" : "var(--ink-3)") + "'>"
       + (!back ? "—" : back.sec ? "+" + fmt(back.sec) + "<small class='sub'>" + back.n + "회</small>"
@@ -1485,6 +1577,12 @@ document.getElementById("pname").addEventListener("input", function(){
   if(tab && tab.firstChild) tab.firstChild.nodeValue = P().name;
   syncTitle(); renderTiles();
 });
+document.getElementById("pstart").addEventListener("input", function(){
+  /* 날짜가 바뀌면 표 머리부터 툴팁까지 전부 달라진다 — 통째로 다시 그린다 */
+  if(parseDay(this.value) !== null) P().start = this.value;
+  else delete P().start;
+  save(); renderAll();
+});
 document.getElementById("pmembers").addEventListener("input", function(){
   P().members = this.value.split(",").map(function(s){ return s.trim(); })
     .filter(Boolean).slice(0,12);
@@ -1512,6 +1610,7 @@ document.getElementById("grid").addEventListener("input", function(e){
       var p = parse(c.value);
       c.classList.toggle("best", !!(p && s.n > 1 && +c.dataset.w === s.best.w));
       c.classList.toggle("approx", !!(p && p.approx));
+      c.classList.toggle("fail", !p && isFail(c.value));
     });
   }
 });
@@ -1519,7 +1618,7 @@ document.getElementById("grid").addEventListener("click", function(e){
   var b = e.target.closest("[data-del]");
   if(!b) return;
   var ri = +b.dataset.del, r = P().rows[ri];
-  var n = r.cells.filter(function(c){ return parse(c); }).length;
+  var n = r.cells.filter(function(c){ return parse(c) || isFail(c); }).length;
   var drop = function(){
     P().rows.splice(ri, 1);
     selected = new Set();
@@ -1546,7 +1645,7 @@ document.getElementById("add-week").onclick = function(){
 document.getElementById("del-week").onclick = function(){
   var p = P();
   if(p.weeks < 2){ flash("1주차는 지울 수 없습니다"); return; }
-  var used = p.rows.filter(function(r){ return parse(r.cells[p.weeks-1]); }).length;
+  var used = p.rows.filter(function(r){ var c = r.cells[p.weeks-1]; return parse(c) || isFail(c); }).length;
   var drop = function(){
     p.weeks--;
     p.rows.forEach(function(r){ r.cells.length = p.weeks; });
@@ -1592,7 +1691,7 @@ document.getElementById("auto-colors").onclick = function(){
 document.getElementById("reset-times").onclick = function(){
   var p = P(), used = 0, notes = 0;
   p.rows.forEach(function(r){
-    r.cells.forEach(function(c){ if(parse(c)) used++; });
+    r.cells.forEach(function(c){ if(parse(c) || isFail(c)) used++; });
     if((r.note || "").trim()) notes++;
   });
   if(!used && !notes){ flash("비울 내용이 없습니다"); return; }
@@ -1611,10 +1710,13 @@ document.getElementById("boss-setup").onclick = function(){
           + "지금 입력한 기록과 메모는 사라집니다.";
   if(others) msg += "\n\n다른 파티 " + others + "개는 그대로 남습니다.";
   ask(msg, "세팅하기", function(){
-    /* 활성 파티만 교체한다 — id와 이름은 유지해야 탭 선택이 유지된다 */
+    /* 이 버튼이 손대는 건 보스 구성과 기록뿐이다 — 파티 자체를 가리키는 값
+       (id, 이름, 파티원, 시작일)은 넘겨받는다. 안 그러면 안내문에 없는 것까지 사라진다 */
     var fresh = clone(d);
     fresh.id = p.id;
     fresh.name = p.name;
+    fresh.members = p.members || [];
+    if(p.start) fresh.start = p.start;
     state.parties[activeIdx()] = fresh;
     selected = new Set();
     save(); renderAll();
@@ -1986,11 +2088,16 @@ function renderCmpChart(list){
     var r = svg.getBoundingClientRect();
     var sx = (e.clientX - r.left) / r.width * W;
     var w = Math.max(0, Math.min(N-1, Math.round((sx - PAD.l) / (N > 1 ? iw/(N-1) : 1))));
+    /* 파티마다 시작일이 다를 수 있으므로 여기서는 주차 번호만 쓰고,
+       각 줄에 그 파티의 날짜를 붙인다 */
     tip.innerHTML = '<div class="th">'+(w+1)+'주차</div>' + list.map(function(o){
-      var t = o.tt[w];
+      var t = o.tt[w], d = weekRange(o.p, w);
+      var vl = t && t.n ? fmtHMS(t.sec) : (t && t.f)
+             ? '<span style="color:var(--neg-ink)">실패 '+t.f+'</span>' : "—";
       return '<div class="tr"><span class="dot" style="background:'+partyVar(o.i)
-        + ';border-radius:50%"></span><span class="nm">'+esc(o.p.name)+'</span>'
-        + '<span class="vl">'+(t && t.n ? fmtHMS(t.sec) : "—")+'</span></div>';
+        + ';border-radius:50%"></span><span class="nm">'+esc(o.p.name)
+        + (d ? ' <em style="font-style:normal;color:var(--ink-3);font-size:10.5px">'+esc(d)+'</em>' : '')
+        + '</span><span class="vl">'+vl+'</span></div>';
     }).join("");
     tip.style.opacity = "1";
     var px = X(w) / W * r.width;
@@ -2066,6 +2173,8 @@ function exportPng(svgId, label, slug){
   if(cross && cross.parentNode) cross.parentNode.removeChild(cross);
 
   var day = stamp();
+  /* 이미지는 대화창을 떠나 돌아다닌다 — 언제 찍었는지보다 어느 기간인지가 중요하다 */
+  var right = spanText(P()) || day.replace(/-/g, ".");
   var out = '<svg xmlns="http://www.w3.org/2000/svg" width="' + (W + pad*2)
     + '" height="' + (H + pad*2 + cap) + '" viewBox="0 0 ' + (W + pad*2) + ' '
     + (H + pad*2 + cap) + '" font-family="system-ui, sans-serif">'
@@ -2073,7 +2182,7 @@ function exportPng(svgId, label, slug){
     + '<text x="' + pad + '" y="' + (pad + 17) + '" font-size="16" font-weight="700" '
     + 'fill="var(--ink)">' + esc(P().name + " · " + label) + '</text>'
     + '<text x="' + (W + pad) + '" y="' + (pad + 17) + '" font-size="12" text-anchor="end" '
-    + 'fill="var(--ink-3)">' + day.replace(/-/g, ".") + '</text>'
+    + 'fill="var(--ink-3)">' + esc(right) + '</text>'
     + '<g transform="translate(' + pad + ',' + (pad + cap) + ')">' + body.innerHTML + '</g></svg>';
 
   var img = new Image();
@@ -2133,7 +2242,8 @@ function packParties(list){
       p.rows.map(function(r){
         return [bname(r), (typeof r.slot === "number" ? r.slot : -1),
                 r.color || "", r.note || "", r.cells.slice(0, p.weeks).join("|")];
-      })
+      }),
+      p.start || ""   /* 6번째 — 예전 링크에는 없다. 없으면 날짜 없이 열린다 */
     ];
   })};
 }
@@ -2145,6 +2255,7 @@ function unpackShare(o){
       name: a[0], weeks: a[1],
       members: String(a[2] || "").split(",").filter(Boolean),
       grey: !!a[3],
+      start: a[5] || undefined,
       rows: (Array.isArray(a[4]) ? a[4] : []).map(function(r){
         return {name:r[0], slot:r[1], color:r[2] || undefined,
                 note:r[3] || "", cells:String(r[4] || "").split("|")};
