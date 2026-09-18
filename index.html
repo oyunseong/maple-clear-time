@@ -353,7 +353,6 @@ footer a:hover{color:var(--ink-2);}
       <button class="btn primary" id="add-week">+ 주차 추가</button>
       <button class="btn" id="del-week">− 주차</button>
       <button class="btn" id="add-boss">+ 보스 추가</button>
-      <button class="btn" id="split-row" title="선택한 칸부터 아래를 새 행으로 옮깁니다">행 나누기</button>
       <button class="btn" id="reset-colors">색상 초기화</button>
       <button class="btn" id="auto-colors">색상 자동 배정</button>
       <button class="btn danger" id="reset-times">초기화</button>
@@ -366,9 +365,7 @@ footer a:hover{color:var(--ink-2);}
     <p class="hint">
       입력 형식 <code>13:30</code> · <code>13분 30초</code> · <code>810</code>(초) · <code>13</code>(분) ·
       초를 모르면 <code>15:XX</code>. 초록 테두리는 그 보스의 최고 기록입니다.
-      보스 이름 왼쪽의 <b>색 상자</b>를 눌러 그래프 색을 직접 고를 수 있습니다.<br>
-      난이도를 올렸다면 — 바뀐 주차의 칸을 클릭하고 <b>행 나누기</b>를 누르세요.
-      그 주차부터의 기록이 새 행으로 빠져서, 서로 다른 보스가 한 줄에 섞이지 않습니다.
+      보스 이름 왼쪽의 <b>색 상자</b>를 눌러 그래프 색을 직접 고를 수 있습니다.
     </p>
   </section>
 
@@ -1407,37 +1404,6 @@ document.getElementById("add-boss").onclick = function(){
   var last = inputs[inputs.length-1];
   if(last){ last.focus(); last.scrollIntoView({block:"nearest"}); }
 };
-/* 난이도가 바뀌면 한 줄에 서로 다른 보스가 섞인다 — 그 지점에서 행을 가른다 */
-var focusCell = null;
-document.getElementById("grid").addEventListener("focusin", function(e){
-  var el = e.target;
-  if(el.classList && el.classList.contains("cell"))
-    focusCell = {r:+el.dataset.r, w:+el.dataset.w};
-});
-document.getElementById("split-row").onclick = function(){
-  var p = P();
-  if(!focusCell || focusCell.r >= p.rows.length || focusCell.w >= p.weeks){
-    flash("나눌 지점의 칸을 먼저 클릭하세요"); return;
-  }
-  var ri = focusCell.r, w = focusCell.w, r = p.rows[ri];
-  if(w === 0){ flash("1주차부터는 나눌 수 없습니다"); return; }
-  var moving = 0;
-  for(var k = w; k < p.weeks; k++) if(parse(r.cells[k])) moving++;
-  if(!moving){ flash((w+1) + "주차부터는 기록이 없습니다"); return; }
-  ask("“" + bname(r) + "” 행을 " + (w+1) + "주차 기준으로 나눕니다.\n"
-    + (w+1) + "주차부터의 기록 " + moving + "개가 새 행으로 옮겨집니다.", "나누기", function(){
-    var head = r.cells.slice(), tail = new Array(p.weeks).fill("");
-    for(var k = w; k < p.weeks; k++){ tail[k] = r.cells[k]; head[k] = ""; }
-    r.cells = head;
-    p.rows.splice(ri + 1, 0, {name: r.name + " (2)", note: (w+1) + "주차부터 전환",
-      cells: tail, slot: nextSlot(p)});
-    focusCell = null;
-    selected = new Set();
-    save(); renderAll();
-    var names = document.querySelectorAll("#grid .bossname");
-    if(names[ri+1]){ names[ri+1].focus(); names[ri+1].select(); }
-  });
-};
 document.getElementById("reset-colors").onclick = function(){
   var p = P();
   var custom = p.rows.filter(function(r){ return !!r.color; }).length;
@@ -1583,10 +1549,21 @@ function applyRestore(text, label){
   var msg = (label ? label + "\n\n" : "")
     + "파티 " + d.parties.length + "개 — "
     + d.parties.map(function(p){ return p.name + "(보스 " + p.rows.length + "종)"; }).join(", ")
-    + "\n\n현재 입력된 파티를 모두 덮어씁니다.";
+    + "\n\n지금 있는 파티 " + state.parties.length + "개는 그대로 두고 뒤에 추가합니다.";
   ask(msg, "복원", function(){
-    state = d; selected = new Set();
-    save(); renderAll(); iomsg("복원했습니다");
+    /* normalize 는 복원본 안에서만 id 를 정리한다 — 기존 파티와 겹치면
+       activeIdx() 가 id 로 파티를 찾으므로 여기서 다시 발급해야 한다 */
+    var taken = {};
+    state.parties.forEach(function(p){ taken[p.id] = 1; });
+    d.parties.forEach(function(p){
+      if(taken[p.id]) p.id = newId();
+      taken[p.id] = 1;
+      state.parties.push(p);
+    });
+    state.activeId = d.parties[0].id;
+    selected = new Set();
+    save(); renderAll();
+    iomsg("파티 " + d.parties.length + "개를 추가했습니다");
   });
 }
 var ioT;
