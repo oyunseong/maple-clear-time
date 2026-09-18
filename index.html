@@ -171,6 +171,9 @@ tbody tr:last-child td{border-bottom:0;}
   text-align:left !important; border-right:1px solid var(--line);
   padding:6px 10px 6px 12px !important; min-width:136px;}
 thead .stick{background:var(--surface-2); z-index:4;}
+/* 순서 손잡이가 들어간 만큼 보스 이름 칸을 넓힌다 */
+#grid .stick{min-width:166px;}
+body.ro #grid .stick{min-width:136px;}
 .bossname{font-weight:600; font-size:13px; color:var(--ink); background:none; border:0;
   width:100%; padding:1px 0; font-family:inherit;}
 .bossnote{font-size:10.5px; color:var(--ink-3); background:none; border:0; width:100%;
@@ -324,6 +327,53 @@ footer a{color:inherit; text-decoration:none;
   border-bottom:1px solid var(--line-strong);}
 footer a:hover{color:var(--ink-2);}
 
+/* 순서 변경 손잡이 */
+.drag{border:0; background:none; color:var(--ink-3); font-size:13px; line-height:1;
+  padding:3px 3px; margin:0 1px 0 -3px; border-radius:5px; cursor:grab;
+  touch-action:none; flex:none;}
+.drag:hover{background:var(--surface-3); color:var(--ink-2);}
+.drag:active{cursor:grabbing;}
+tbody tr.dragging td{background:var(--accent-soft) !important;}
+tbody tr.dragging{opacity:.75;}
+
+/* 섹션 머리의 오른쪽 버튼 */
+.shead .sp{margin-left:auto; display:flex; gap:8px;}
+
+/* 파티 비교 */
+.cmp-tools{display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px;}
+.cmp-tools .chip .cnt{font-family:"IBM Plex Mono",monospace; font-size:10.5px;
+  color:var(--ink-3); font-weight:500;}
+.cmp .detail td.fast{background:color-mix(in srgb, var(--pos) 13%, transparent);}
+.cmp .detail td.fast b{color:var(--pos-ink);}
+.cmp .detail td b{font-weight:600;}
+.cmp .detail th .dot{width:8px; height:8px; border-radius:50%; margin-right:6px;
+  display:inline-block;}
+.cmp .detail td.gap{color:var(--ink-2);}
+
+/* 공유 */
+.shareout{width:100%; font-family:"IBM Plex Mono",monospace; font-size:11.5px;
+  color:var(--ink-2); background:var(--surface-2); border:1px solid var(--line-strong);
+  border-radius:8px; padding:9px 11px; white-space:nowrap; text-overflow:ellipsis;}
+.shareout:focus{border-color:var(--accent); outline:none;}
+
+/* 읽기 전용 배너 */
+.viewbar{display:flex; flex-wrap:wrap; gap:10px 16px; align-items:center;
+  background:var(--accent-soft); border:1px solid var(--accent); border-radius:10px;
+  padding:11px 15px; margin-bottom:20px; font-size:12.5px; color:var(--ink-2);}
+.viewbar b{display:block; font-size:13px; color:var(--ink); font-weight:700;}
+.viewbar .vb-act{margin-left:auto; display:flex; gap:8px; flex-wrap:wrap;}
+.viewbar.err{background:color-mix(in srgb, var(--neg) 11%, transparent);
+  border-color:var(--neg);}
+.viewbar.err b{color:var(--neg-ink);}
+
+/* 읽기 전용에서 감추는 것들 */
+body.ro .toolbar, body.ro .partymeta .sp, body.ro .ptab.add, body.ro .rowdel,
+body.ro .drag, body.ro #share-sec, body.ro #backup-sec, body.ro .hint{display:none !important;}
+body.ro .swatch{pointer-events:none;}
+body.ro .bossnote::placeholder{color:transparent;}
+body.ro .partymeta input{background:var(--surface-2); color:var(--ink-3);
+  border-style:dashed;}
+
 @media (max-width:820px){
   .tiles{grid-template-columns:repeat(2,1fr);}
   .masthead .meta{margin-left:0; text-align:left;}
@@ -340,6 +390,17 @@ footer a:hover{color:var(--ink-2);}
 
 <div class="wrap">
 
+  <div class="viewbar" id="viewbar" hidden>
+    <div>
+      <b id="vb-title">공유된 기록을 보고 있습니다</b>
+      <span id="vb-sub">읽기 전용입니다 — 여기서 고친 내용은 저장되지 않습니다.</span>
+    </div>
+    <span class="vb-act">
+      <button class="btn" id="vb-copy">내 기록에 추가</button>
+      <button class="btn primary" id="vb-exit">내 기록 보기</button>
+    </span>
+  </div>
+
   <header class="masthead">
     <div>
       <p class="eyebrow">Weekly Boss Log</p>
@@ -347,7 +408,7 @@ footer a:hover{color:var(--ink-2);}
     </div>
     <div class="meta">
       <b id="meta-range">—</b>
-      기록은 이 브라우저에 자동 저장됩니다
+      <span id="meta-note">기록은 이 브라우저에 자동 저장됩니다</span>
     </div>
   </header>
 
@@ -385,6 +446,10 @@ footer a:hover{color:var(--ink-2);}
       입력 형식 <code>13:30</code> · <code>13분 30초</code> · <code>810</code>(초) · <code>13</code>(분) ·
       초를 모르면 <code>15:XX</code>. 초록 테두리는 그 보스의 최고 기록입니다.
       보스 이름 왼쪽의 <b>색 상자</b>를 눌러 그래프 색을 직접 고를 수 있습니다.
+      <br>칸 이동 <code>↑</code> <code>↓</code> <code>Enter</code> · 같은 줄은 <code>Tab</code>
+      또는 글자 끝에서 <code>←</code> <code>→</code>
+      <br>맨 왼쪽 <b>⠿</b> 손잡이를 끌면 보스 순서가 바뀝니다 — 손잡이에 초점을 두고
+      <code>↑</code> <code>↓</code> 로도 됩니다
     </p>
   </section>
 
@@ -392,6 +457,7 @@ footer a:hover{color:var(--ink-2);}
     <div class="shead">
       <h2>주차별 추이</h2>
       <p>보스를 눌러 비교 대상을 바꿉니다 · 최대 8개</p>
+      <span class="sp"><button class="btn" id="png-trend">PNG 저장</button></span>
     </div>
     <div class="panel panel-pad">
       <div class="legend" id="legend"></div>
@@ -406,6 +472,7 @@ footer a:hover{color:var(--ink-2);}
     <div class="shead">
       <h2>주간 총 소요시간</h2>
       <p>그 주에 클리어한 보스 시간의 합계 · 막대 아래 숫자는 진행한 보스 수</p>
+      <span class="sp"><button class="btn" id="png-totals">PNG 저장</button></span>
     </div>
     <div class="panel panel-pad">
       <div class="chartbox" id="totalbox">
@@ -415,6 +482,28 @@ footer a:hover{color:var(--ink-2);}
     </div>
   </section>
 
+
+  <section id="cmp-sec" class="cmp" hidden>
+    <div class="shead">
+      <h2>파티 비교</h2>
+      <p>파티를 눌러 비교 대상을 고릅니다 · 최대 6개</p>
+      <span class="sp"><button class="btn" id="png-cmp">PNG 저장</button></span>
+    </div>
+    <div class="panel panel-pad">
+      <div class="cmp-tools" id="cmp-tools"></div>
+      <div class="chartbox" id="cmpbox">
+        <svg id="cmpchart" viewBox="0 0 780 300" role="img" aria-label="파티별 주간 총 소요시간"></svg>
+        <div class="tip" id="tip3"></div>
+      </div>
+    </div>
+    <div class="panel scroller" style="margin-top:12px">
+      <table id="cmptable" class="detail"></table>
+    </div>
+    <p class="hint">
+      같은 이름의 보스끼리 묶어 <b>최고 기록</b>을 견줍니다 — 이름이 다르면 다른 보스로 봅니다.
+      초록 칸이 그 보스를 가장 빨리 잡는 파티입니다.
+    </p>
+  </section>
   <section>
     <div class="shead">
       <h2>눈여겨볼 보스</h2>
@@ -454,7 +543,28 @@ footer a:hover{color:var(--ink-2);}
     </div>
   </section>
 
-  <section>
+
+  <section id="share-sec">
+    <div class="shead">
+      <h2>남에게 보여주기</h2>
+      <p>기록이 링크 안에 통째로 들어갑니다 · 서버에 올라가지 않고, 받은 사람은 읽기만 할 수 있습니다</p>
+    </div>
+    <div class="panel panel-pad">
+      <div class="toolbar" style="margin-bottom:10px">
+        <button class="btn primary" id="share-one">이 파티 링크</button>
+        <button class="btn" id="share-all">전체 파티 링크</button>
+        <button class="btn" id="share-open" disabled>미리보기</button>
+        <span class="saved" id="sharemsg"></span>
+      </div>
+      <input class="shareout" id="shareout" readonly
+             placeholder="버튼을 누르면 링크가 만들어집니다" aria-label="공유 링크">
+      <p class="hint" id="sharelen">
+        링크를 받은 사람에게는 편집 버튼과 백업 기능이 보이지 않습니다.
+        그 사람이 원하면 <b>내 기록에 추가</b>로 자기 브라우저에 가져갈 수 있습니다.
+      </p>
+    </div>
+  </section>
+  <section id="backup-sec">
     <div class="shead">
       <h2>백업 / 복원</h2>
       <p>모든 파티의 기록을 한 파일로 묶습니다 · 이 브라우저에만 저장되니 가끔 받아 두세요</p>
@@ -523,8 +633,15 @@ const SLOT = ["--s1","--s2","--s3","--s4","--s5","--s6","--s7","--s8",
               "--s10","--s11","--s12","--s13"];
 const OTHER = "--s9";
 
-let state = load() || clone(DEFAULT_STATE);
+/* 주소의 #v= 에 기록이 실려 오면 그 데이터를 읽기 전용으로 띄운다.
+   이때 localStorage 는 건드리지 않는다 — 보는 사람의 기록이 덮여서는 안 된다 */
+var shareErr = null;
+var shared = readShare();
+var RO = !!shared;
+
+let state = shared || load() || clone(DEFAULT_STATE);
 let selected = new Set();
+let cmpSel = new Set();
 
 /* 화면에 떠 있는 파티 — 모든 계산이 이 파티만 본다 */
 function activeIdx(){
@@ -551,15 +668,23 @@ function load(){
   }catch(e){ return null; }
 }
 function save(){
+  if(RO) return;   /* 공유 링크로 열린 화면은 아무것도 저장하지 않는다 */
   try{ localStorage.setItem(KEY, JSON.stringify(state)); flash("저장됨"); }
   catch(e){ flash("저장할 수 없습니다"); }
 }
-let flashT;
+let flashT, roSub = null;
+/* 읽기 전용에서는 #saved 가 든 툴바가 통째로 숨겨진다 — 늘 떠 있는 배너에 띄우고
+   잠시 뒤 원래 안내문으로 되돌린다. 안 그러면 PNG 저장 실패가 조용히 묻힌다 */
 function flash(msg){
-  const el = document.getElementById("saved");
-  el.textContent = msg; el.style.color = "var(--accent-ink)";
+  const el = document.getElementById(RO ? "vb-sub" : "saved");
+  if(RO && roSub === null) roSub = el.textContent;
+  el.textContent = msg;
+  el.style.color = "var(--accent-ink)";
   clearTimeout(flashT);
-  flashT = setTimeout(function(){ el.style.color = "var(--ink-3)"; }, 900);
+  flashT = setTimeout(function(){
+    if(RO){ el.textContent = roSub; el.style.color = ""; }
+    else el.style.color = "var(--ink-3)";
+  }, RO ? 2600 : 900);
 }
 function esc(s){ return String(s).replace(/[&<>"]/g, function(c){
   return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
@@ -691,8 +816,9 @@ function fmtSignedHMS(sec){
 }
 
 /* 주차별 총 소요시간과 그 주에 진행한 보스 수 */
-function weekTotals(){
-  var p = P(), out = [];
+function weekTotals(p){
+  p = p || P();
+  var out = [];
   for(var w = 0; w < p.weeks; w++){
     var sum = 0, n = 0;
     p.rows.forEach(function(r){
@@ -736,9 +862,9 @@ function streak(s){
 }
 
 /* ===== 파생 계산 ===== */
-function series(row){ return row.cells.slice(0, P().weeks).map(parse); }
-function stats(row){
-  var t = series(row), pts = [];
+function series(row, p){ p = p || P(); return row.cells.slice(0, p.weeks).map(parse); }
+function stats(row, p){
+  var t = series(row, p), pts = [];
   t.forEach(function(v,i){ if(v) pts.push({w:i, sec:v.sec, approx:v.approx}); });
   if(!pts.length) return {pts:[], n:0};
   var first = pts[0], last = pts[pts.length-1];
@@ -999,6 +1125,8 @@ function renderParties(){
     + '<button class="ptab add" data-add="1" title="새 파티 추가">+ 파티</button>';
   document.getElementById("pname").value = P().name;
   document.getElementById("pmembers").value = P().members.join(", ");
+  document.getElementById("pname").disabled = RO;
+  document.getElementById("pmembers").disabled = RO;
   document.getElementById("del-party").disabled = state.parties.length < 2;
   syncTitle();
 }
@@ -1006,32 +1134,39 @@ function renderParties(){
 /* ===== 입력 그리드 ===== */
 function renderGrid(){
   var order = weekOrder();
+  var ro = RO ? " readonly" : "";
   var h = "<thead><tr><th class='stick'>보스</th>";
   order.forEach(function(w){ h += "<th class='wk'>"+(w+1)+"<span>주차</span></th>"; });
   h += "</tr></thead><tbody>";
   P().rows.forEach(function(r, ri){
     var s = stats(r);
     h += "<tr><td class='stick'><div class='namerow'>"
+       + (RO ? "" : "<button class='drag' data-drag='"+ri+"' title='끌어서 순서 변경'"
+         + " aria-label='"+esc(bname(r))+" 순서 변경'>⠿</button>")
        + "<input type='color' class='swatch"+(r.color ? " custom-mark" : "")+"' value='"+colorHex(ri)
        + "' data-r='"+ri+"' data-f='color' title='"+esc(r.name)+" 그래프 색상 변경'"
+       + (RO ? " disabled" : "")
        + " aria-label='"+esc(r.name)+" 색상'>"
        + "<input class='bossname' value=\""+esc(r.name)+"\" data-r='"+ri+"' data-f='name' "
-       + "placeholder='보스 이름' aria-label='보스 이름'>"
-       + "<button class='rowdel' data-del='"+ri+"' title='행 삭제' aria-label='"+esc(r.name)+" 삭제'>×</button></div>"
-       + "<input class='bossnote' value=\""+esc(r.note||"")+"\" data-r='"+ri+"' data-f='note' placeholder='메모' aria-label='메모'></td>";
+       + "placeholder='보스 이름' aria-label='보스 이름'"+ro+">"
+       + (RO ? "" : "<button class='rowdel' data-del='"+ri+"' title='행 삭제' aria-label='"
+         + esc(r.name)+" 삭제'>×</button>")
+       + "</div>"
+       + "<input class='bossnote' value=\""+esc(r.note||"")+"\" data-r='"+ri+"' data-f='note' placeholder='메모' aria-label='메모'"+ro+"></td>";
     order.forEach(function(w){
       var raw = r.cells[w] || "", p = parse(raw);
       var cls = "cell"
         + (p && s.n > 1 && w === s.best.w ? " best" : "")
         + (p && p.approx ? " approx" : "");
       h += "<td><input class='"+cls+"' value=\""+esc(raw)+"\" placeholder='—' data-r='"+ri+"' data-w='"+w+"' "
-         + "aria-label=\""+esc(r.name)+" "+(w+1)+"주차\"></td>";
+         + "aria-label=\""+esc(r.name)+" "+(w+1)+"주차\""+ro+"></td>";
     });
     h += "</tr>";
   });
   if(!P().rows.length){
     h += "<tr><td class='empty' colspan='" + (P().weeks + 1) + "'>"
-       + "아직 보스가 없습니다 — 위의 <b>+ 보스 추가</b>로 이 파티가 도는 보스를 넣어 주세요."
+       + (RO ? "이 파티에는 보스가 없습니다."
+             : "아직 보스가 없습니다 — 위의 <b>+ 보스 추가</b>로 이 파티가 도는 보스를 넣어 주세요.")
        + "</td></tr>";
   }
   document.getElementById("grid").innerHTML = h + "</tbody>";
@@ -1218,13 +1353,13 @@ function renderMatrix(){
 }
 
 /* ===== 종합 표 ===== */
-function spark(s, color){
+function spark(s, color, pt){
   if(s.n < 2) return "";
-  var W = 104, H = 26, p = 3;
+  var W = 104, H = 26, p = 3, nw = (pt || P()).weeks;
   var lo = Infinity, hi = -Infinity;
   s.pts.forEach(function(x){ if(x.sec < lo) lo = x.sec; if(x.sec > hi) hi = x.sec; });
   var rg = (hi - lo) || 1;
-  function X(w){ return p + (P().weeks > 1 ? w*((W-2*p)/(P().weeks-1)) : 0); }
+  function X(w){ return p + (nw > 1 ? w*((W-2*p)/(nw-1)) : 0); }
   function Y(v){ return p + (H-2*p) - ((v-lo)/rg)*(H-2*p); }
   var d = "";
   s.pts.forEach(function(pt,i){ d += (i ? "L" : "M") + X(pt.w).toFixed(1) + " " + Y(pt.sec).toFixed(1) + " "; });
@@ -1285,8 +1420,9 @@ function defaultSelection(){
 }
 function renderCharts(){
   renderTiles(); renderLegend(); renderTrend(); renderTotals(); renderPicks();
-  renderBars(); renderMatrix(); renderDetail(); renderBackupState();
-  document.getElementById("json").value = JSON.stringify(state, null, 2);
+  renderBars(); renderMatrix(); renderDetail(); renderCompare();
+  if(!RO) renderBackupState();
+  if(!RO) document.getElementById("json").value = JSON.stringify(state, null, 2);
 }
 function renderAll(){
   if(!selected.size) defaultSelection();
@@ -1600,6 +1736,521 @@ function iomsg(m){
   ioT = setTimeout(function(){ el.textContent = ""; }, 2600);
 }
 
+
+/* ===== 행 순서 바꾸기 ===== */
+/* order[새 자리] = 예전 인덱스 — 드래그 결과와 키보드 이동이 같은 모양을 쓴다 */
+function applyOrder(order){
+  if(!order) return;
+  var rows = P().rows;
+  if(order.length !== rows.length) { renderAll(); return; }
+  var next = order.map(function(i){ return rows[i]; });
+  if(next.some(function(r){ return !r; })) { renderAll(); return; }
+  /* 선택된 보스는 인덱스로 기억하므로 새 자리로 옮겨 준다 */
+  var pos = {};
+  order.forEach(function(old, ni){ pos[old] = ni; });
+  var sel = new Set();
+  selected.forEach(function(i){ if(pos[i] !== undefined) sel.add(pos[i]); });
+  selected = sel;
+  P().rows = next;
+  save(); renderAll();
+}
+function moveRow(ri, dir){
+  var n = P().rows.length, ni = ri + dir;
+  if(ri < 0 || ri >= n || ni < 0 || ni >= n) return -1;
+  var order = [];
+  for(var i = 0; i < n; i++) order.push(i);
+  order.splice(ni, 0, order.splice(ri, 1)[0]);
+  applyOrder(order);
+  return ni;
+}
+
+var drag = null;
+var gridEl = document.getElementById("grid");
+gridEl.addEventListener("pointerdown", function(e){
+  if(RO) return;
+  var h = e.target.closest(".drag");
+  if(!h) return;
+  var tr = h.closest("tr");
+  if(!tr || !tr.parentNode) return;
+  e.preventDefault();
+  drag = {tr:tr, moved:false};
+  tr.classList.add("dragging");
+  try{ h.setPointerCapture(e.pointerId); }catch(err){}
+});
+gridEl.addEventListener("pointermove", function(e){
+  if(!drag) return;
+  var tb = drag.tr.parentNode, rows = Array.prototype.slice.call(tb.children);
+  for(var i = 0; i < rows.length; i++){
+    var r = rows[i];
+    if(r === drag.tr) continue;
+    var b = r.getBoundingClientRect();
+    if(e.clientY >= b.top && e.clientY <= b.bottom){
+      tb.insertBefore(drag.tr, e.clientY < b.top + b.height/2 ? r : r.nextSibling);
+      drag.moved = true;
+      break;
+    }
+  }
+});
+function endDrag(){
+  if(!drag) return;
+  var tr = drag.tr, moved = drag.moved && !!drag.tr.parentNode;
+  drag = null;
+  tr.classList.remove("dragging");
+  if(!moved) return;
+  /* data-r 은 아직 예전 인덱스다 — 지금 DOM 순서가 곧 새 순서 */
+  var order = Array.prototype.slice.call(tr.parentNode.children)
+    .map(function(r){ var el = r.querySelector("[data-r]"); return el ? +el.dataset.r : -1; })
+    .filter(function(i){ return i >= 0; });
+  applyOrder(order);
+}
+gridEl.addEventListener("pointerup", endDrag);
+gridEl.addEventListener("pointercancel", endDrag);
+addEventListener("pointerup", endDrag);
+
+/* ===== 그리드 키보드 이동 ===== */
+/* 입력은 "이번 주차를 위에서 아래로" 훑는 흐름이라 세로 이동이 기본이다 */
+function focusLike(from, tr){
+  var t;
+  if(from.classList.contains("cell")){
+    var cells = Array.prototype.slice.call(from.closest("tr").querySelectorAll("input.cell"));
+    t = tr.querySelectorAll("input.cell")[cells.indexOf(from)];
+  } else {
+    t = tr.querySelector(from.classList.contains("bossname") ? ".bossname" : ".bossnote");
+  }
+  if(!t) return false;
+  t.focus();
+  if(t.select) t.select();
+  return true;
+}
+gridEl.addEventListener("keydown", function(e){
+  var el = e.target;
+  if(el.classList && el.classList.contains("drag")){
+    var d = e.key === "ArrowUp" ? -1 : e.key === "ArrowDown" ? 1 : 0;
+    if(!d) return;
+    e.preventDefault();
+    var ni = moveRow(+el.dataset.drag, d);
+    if(ni < 0) return;
+    var h = document.querySelector('#grid .drag[data-drag="' + ni + '"]');
+    if(h) h.focus();
+    return;
+  }
+  if(!el.matches || !el.matches("input.cell, .bossname, .bossnote")) return;
+  var tr = el.closest("tr");
+  var rows = Array.prototype.slice.call(tr.parentNode.children);
+  var ri = rows.indexOf(tr);
+  var k = e.key;
+
+  if(k === "Escape"){ el.blur(); return; }
+
+  var vert = k === "ArrowUp" ? -1
+           : k === "ArrowDown" ? 1
+           : k === "Enter" ? (e.shiftKey ? -1 : 1) : 0;
+  if(vert){
+    var t = rows[ri + vert];
+    if(!t){ if(k === "Enter") el.blur(); return; }
+    if(focusLike(el, t)) e.preventDefault();
+    return;
+  }
+  /* ←→ 는 글자 끝에 닿았을 때만 칸을 넘는다 — 아니면 커서 이동을 뺏는다 */
+  if(el.classList.contains("cell") && (k === "ArrowLeft" || k === "ArrowRight")){
+    var edge = k === "ArrowLeft"
+      ? (el.selectionStart === 0 && el.selectionEnd === 0)
+      : (el.selectionStart === el.value.length && el.selectionEnd === el.value.length);
+    if(!edge) return;
+    var cs = Array.prototype.slice.call(tr.querySelectorAll("input.cell"));
+    var ci = cs.indexOf(el) + (k === "ArrowLeft" ? -1 : 1);
+    if(ci < 0 || ci >= cs.length) return;
+    e.preventDefault();
+    cs[ci].focus(); cs[ci].select();
+  }
+});
+
+/* ===== 파티 비교 ===== */
+/* 보스 색은 파티 안에서만 뜻이 있으므로, 여기서는 색이 파티를 가리킨다 */
+function partyVar(i){ return "var(" + SLOT[i % SLOT.length] + ")"; }
+function defaultCmp(){
+  state.parties.slice(0, Math.min(4, state.parties.length))
+    .forEach(function(p){ cmpSel.add(p.id); });
+}
+function cmpList(){
+  var out = [];
+  state.parties.forEach(function(p, i){ if(cmpSel.has(p.id)) out.push({p:p, i:i}); });
+  return out;
+}
+function renderCompare(){
+  var sec = document.getElementById("cmp-sec");
+  if(state.parties.length < 2){ sec.hidden = true; return; }
+  sec.hidden = false;
+  /* 지운 파티가 선택에 남아 있을 수 있다 */
+  var live = {};
+  state.parties.forEach(function(p){ live[p.id] = 1; });
+  var stale = [];
+  cmpSel.forEach(function(id){ if(!live[id]) stale.push(id); });
+  stale.forEach(function(id){ cmpSel.delete(id); });
+  if(!cmpSel.size) defaultCmp();
+
+  document.getElementById("cmp-tools").innerHTML = state.parties.map(function(p, i){
+    return '<button class="chip" aria-pressed="' + cmpSel.has(p.id) + '" data-cmp="' + p.id + '">'
+      + '<span class="dot" style="background:' + partyVar(i) + '"></span>' + esc(p.name)
+      + '<span class="cnt">' + p.rows.length + '종</span></button>';
+  }).join("");
+
+  var list = cmpList();
+  renderCmpChart(list);
+  renderCmpTable(list);
+}
+document.getElementById("cmp-tools").addEventListener("click", function(e){
+  var b = e.target.closest("[data-cmp]");
+  if(!b) return;
+  var id = b.dataset.cmp;
+  if(cmpSel.has(id)){
+    if(cmpSel.size < 2){ smsg("한 개는 남겨 두세요"); return; }
+    cmpSel.delete(id);
+  } else if(cmpSel.size >= 6){ smsg("한 번에 최대 6개까지 비교할 수 있습니다"); return; }
+  else cmpSel.add(id);
+  renderCompare();
+});
+
+function renderCmpChart(list){
+  var svg = document.getElementById("cmpchart");
+  var W = 780, H = 300, PAD = {l:66, r:100, t:16, b:38};
+  var iw = W - PAD.l - PAD.r, ih = H - PAD.t - PAD.b;
+  var N = 1, hi = 0;
+  list.forEach(function(o){
+    N = Math.max(N, o.p.weeks);
+    o.tt = weekTotals(o.p);
+    o.tt.forEach(function(t){ if(t.n && t.sec > hi) hi = t.sec; });
+  });
+  var cand = [300,600,900,1800,3600,5400,7200,10800];
+  var step = cand[cand.length-1];
+  for(var c = 0; c < cand.length; c++){ if((hi || 3600)/cand[c] <= 4){ step = cand[c]; break; } }
+  var y1 = Math.max(step, Math.ceil((hi || 1)/step)*step);
+
+  function X(w){ return PAD.l + (N > 1 ? w*(iw/(N-1)) : iw/2); }
+  function Y(v){ return PAD.t + ih - (v/y1)*ih; }
+
+  var g = "";
+  for(var v = 0; v <= y1 + 0.5; v += step){
+    var y = Y(v);
+    g += '<line x1="'+PAD.l+'" y1="'+y.toFixed(1)+'" x2="'+(PAD.l+iw)+'" y2="'+y.toFixed(1)
+       + '" stroke="var(--line)" stroke-width="1"/>'
+       + '<text x="'+(PAD.l-10)+'" y="'+(y+4).toFixed(1)+'" text-anchor="end" font-size="11" '
+       + 'fill="var(--ink-3)" font-family="IBM Plex Mono, monospace">'+fmtHMS(v)+'</text>';
+  }
+  for(var w = 0; w < N; w++){
+    g += '<text x="'+X(w).toFixed(1)+'" y="'+(PAD.t+ih+22)+'" text-anchor="middle" font-size="11" '
+       + 'fill="var(--ink-3)" font-family="IBM Plex Mono, monospace">'+(w+1)+'</text>';
+  }
+  g += '<text x="'+(PAD.l+iw/2)+'" y="'+(H-4)+'" text-anchor="middle" font-size="10.5" '
+     + 'fill="var(--ink-3)">주차</text>';
+
+  var labels = [];
+  list.forEach(function(o){
+    var c = partyVar(o.i), d = "", open = false, last = null;
+    for(var w = 0; w < N; w++){
+      var t = o.tt[w];
+      if(!t || !t.n){ open = false; continue; }
+      d += (open ? "L" : "M") + X(w).toFixed(1) + " " + Y(t.sec).toFixed(1) + " ";
+      open = true; last = t;
+    }
+    if(!last) return;
+    g += '<path d="'+d+'" fill="none" stroke="'+c+'" stroke-width="2" '
+       + 'stroke-linecap="round" stroke-linejoin="round"/>';
+    o.tt.forEach(function(t){
+      if(!t.n) return;
+      g += '<circle cx="'+X(t.w).toFixed(1)+'" cy="'+Y(t.sec).toFixed(1)
+         + '" r="3.6" fill="'+c+'" stroke="var(--surface)" stroke-width="2"/>';
+    });
+    labels.push({y:Y(last.sec), x:X(last.w), name:o.p.name, c:c});
+  });
+  labels.sort(function(a,b){ return a.y - b.y; });
+  for(var i = 1; i < labels.length; i++){
+    if(labels[i].y - labels[i-1].y < 15) labels[i].y = labels[i-1].y + 15;
+  }
+  labels.forEach(function(l){
+    var lx = Math.min(l.x + 10, PAD.l + iw + 8);
+    var ly = Math.min(Math.max(l.y, PAD.t + 6), H - PAD.b + 10);
+    g += '<text x="'+lx.toFixed(1)+'" y="'+(ly+4).toFixed(1)+'" font-size="11.5" '
+       + 'font-weight="600" fill="'+l.c+'">'+esc(l.name)+'</text>';
+  });
+  if(!labels.length){
+    g += '<text x="'+(PAD.l+iw/2)+'" y="'+(PAD.t+ih/2)+'" text-anchor="middle" font-size="12.5" '
+       + 'fill="var(--ink-3)">선택한 파티에 기록이 없습니다</text>';
+  }
+  svg.innerHTML = g;
+
+  var tip = document.getElementById("tip3"), box = document.getElementById("cmpbox");
+  svg.onpointermove = function(e){
+    var r = svg.getBoundingClientRect();
+    var sx = (e.clientX - r.left) / r.width * W;
+    var w = Math.max(0, Math.min(N-1, Math.round((sx - PAD.l) / (N > 1 ? iw/(N-1) : 1))));
+    tip.innerHTML = '<div class="th">'+(w+1)+'주차</div>' + list.map(function(o){
+      var t = o.tt[w];
+      return '<div class="tr"><span class="dot" style="background:'+partyVar(o.i)
+        + ';border-radius:50%"></span><span class="nm">'+esc(o.p.name)+'</span>'
+        + '<span class="vl">'+(t && t.n ? fmtHMS(t.sec) : "—")+'</span></div>';
+    }).join("");
+    tip.style.opacity = "1";
+    var px = X(w) / W * r.width;
+    tip.style.left = Math.max(4, Math.min(px + 14, box.clientWidth - tip.offsetWidth - 4)) + "px";
+    tip.style.top = Math.max(4, Math.min(e.clientY - r.top - tip.offsetHeight/2,
+                                         box.clientHeight - tip.offsetHeight - 4)) + "px";
+  };
+  svg.onpointerleave = function(){ tip.style.opacity = "0"; };
+}
+
+/* 같은 이름의 보스를 파티끼리 묶어 최고 기록을 견준다 */
+function renderCmpTable(list){
+  var idx = {}, out = [];
+  list.forEach(function(o){
+    o.p.rows.forEach(function(r){
+      var n = bname(r), s = stats(r, o.p);
+      if(!s.n) return;
+      if(!idx[n]){ idx[n] = {name:n, by:{}}; out.push(idx[n]); }
+      if(!idx[n].by[o.p.id]) idx[n].by[o.p.id] = s;
+    });
+  });
+  var h = "<thead><tr><th>보스</th>"
+    + list.map(function(o){
+        return "<th><span class='dot' style='background:"+partyVar(o.i)+"'></span>"
+             + esc(o.p.name)+"</th>";
+      }).join("")
+    + "<th>격차</th></tr></thead><tbody>";
+  out.forEach(function(o){
+    var have = [];
+    list.forEach(function(x){ var s = o.by[x.p.id]; if(s) have.push(s.best.sec); });
+    var lo = Math.min.apply(null, have);
+    var gap = have.length > 1 ? Math.max.apply(null, have) - lo : null;
+    h += "<tr><td class='name'>"+esc(o.name)+"</td>";
+    list.forEach(function(x){
+      var s = o.by[x.p.id];
+      if(!s){ h += "<td style='color:var(--ink-3)'>—</td>"; return; }
+      var fast = have.length > 1 && s.best.sec === lo;
+      h += "<td class='"+(fast ? "fast" : "")+"'><b>"+fmt(s.best.sec)+"</b>"
+         + "<small class='sub'>최근 "+fmt(s.last.sec)+"</small></td>";
+    });
+    h += "<td class='gap'>"+(gap === null ? "—" : gap ? "+"+fmt(gap) : "0:00")+"</td></tr>";
+  });
+  if(!out.length){
+    h += "<tr><td class='empty' colspan='"+(list.length+2)+"'>"
+       + "선택한 파티에 아직 기록이 없습니다.</td></tr>";
+  }
+  document.getElementById("cmptable").innerHTML = h + "</tbody>";
+}
+
+/* ===== 차트 PNG 내보내기 ===== */
+/* 차트는 색을 var(--..) 로 쓴다 — 떼어 낸 SVG 안에서는 그 변수가 없으므로 값을 박아 넣는다 */
+function cssVars(s){
+  var cs = getComputedStyle(document.documentElement);
+  return s.replace(/var\((--[\w-]+)\)/g, function(m, n){
+    return cs.getPropertyValue(n).trim() || "#888888";
+  });
+}
+function safeName(s){
+  return String(s || "").replace(/[\\/:*?"<>|\s]+/g, "-")
+    .replace(/^-+|-+$/g, "").slice(0, 24) || "party";
+}
+function stamp(){
+  var d = new Date(), p = function(n){ return String(n).padStart(2, "0"); };
+  return d.getFullYear() + "-" + p(d.getMonth()+1) + "-" + p(d.getDate());
+}
+function exportPng(svgId, label, slug){
+  var svg = document.getElementById(svgId);
+  if(!svg){ flash("차트를 찾지 못했습니다"); return; }
+  var vb = (svg.getAttribute("viewBox") || "0 0 780 350").trim().split(/\s+/);
+  var W = +vb[2] || 780, H = +vb[3] || 350, pad = 18, cap = 40;
+  var body = svg.cloneNode(true);
+  var cross = body.querySelector("#cross");
+  if(cross && cross.parentNode) cross.parentNode.removeChild(cross);
+
+  var day = stamp();
+  var out = '<svg xmlns="http://www.w3.org/2000/svg" width="' + (W + pad*2)
+    + '" height="' + (H + pad*2 + cap) + '" viewBox="0 0 ' + (W + pad*2) + ' '
+    + (H + pad*2 + cap) + '" font-family="system-ui, sans-serif">'
+    + '<rect width="100%" height="100%" fill="var(--surface)"/>'
+    + '<text x="' + pad + '" y="' + (pad + 17) + '" font-size="16" font-weight="700" '
+    + 'fill="var(--ink)">' + esc(P().name + " · " + label) + '</text>'
+    + '<text x="' + (W + pad) + '" y="' + (pad + 17) + '" font-size="12" text-anchor="end" '
+    + 'fill="var(--ink-3)">' + day.replace(/-/g, ".") + '</text>'
+    + '<g transform="translate(' + pad + ',' + (pad + cap) + ')">' + body.innerHTML + '</g></svg>';
+
+  var img = new Image();
+  img.onload = function(){
+    try{
+      var sc = 2, c = document.createElement("canvas");
+      c.width = Math.round((W + pad*2) * sc);
+      c.height = Math.round((H + pad*2 + cap) * sc);
+      var ctx = c.getContext("2d");
+      ctx.setTransform(sc, 0, 0, sc, 0, 0);
+      ctx.drawImage(img, 0, 0);
+      c.toBlob(function(b){
+        if(!b){ flash("이미지를 만들지 못했습니다"); return; }
+        var url = URL.createObjectURL(b);
+        var a = document.createElement("a");
+        a.href = url;
+        a.download = "clear-" + safeName(P().name) + "-" + slug + "-" + day + ".png";
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+        flash("PNG 를 저장했습니다");
+      }, "image/png");
+    }catch(err){ flash("이미지를 만들지 못했습니다"); }
+  };
+  img.onerror = function(){ flash("이미지를 만들지 못했습니다"); };
+  img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(cssVars(out));
+}
+document.getElementById("png-trend").onclick = function(){
+  exportPng("trend", "주차별 추이", "trend");
+};
+document.getElementById("png-totals").onclick = function(){
+  exportPng("totals", "주간 총 소요시간", "totals");
+};
+document.getElementById("png-cmp").onclick = function(){
+  exportPng("cmpchart", "파티 비교", "compare");
+};
+
+/* ===== 남에게 보여주기 ===== */
+/* 링크 안에 기록이 통째로 들어간다 — 서버가 없으니 주소가 곧 저장소다.
+   JSON 을 그대로 실으면 주소가 너무 길어져서 키 없는 배열로 접는다 */
+function b64e(s){
+  var b = new TextEncoder().encode(s), bin = "";
+  for(var i = 0; i < b.length; i += 0x8000)
+    bin += String.fromCharCode.apply(null, b.subarray(i, i + 0x8000));
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+function b64d(s){
+  var bin = atob(s.replace(/-/g, "+").replace(/_/g, "/"));
+  var b = new Uint8Array(bin.length);
+  for(var i = 0; i < bin.length; i++) b[i] = bin.charCodeAt(i);
+  return new TextDecoder().decode(b);
+}
+/* 기록 칸에 | 를 넣을 일은 없다 — 파서가 받는 형식에 안 들어간다 */
+function packParties(list){
+  return {v:1, p:list.map(function(p){
+    return [
+      p.name, p.weeks, (p.members || []).join(","), p.grey ? 1 : 0,
+      p.rows.map(function(r){
+        return [bname(r), (typeof r.slot === "number" ? r.slot : -1),
+                r.color || "", r.note || "", r.cells.slice(0, p.weeks).join("|")];
+      })
+    ];
+  })};
+}
+function unpackShare(o){
+  if(!o || o.v !== 1 || !Array.isArray(o.p) || !o.p.length)
+    throw new Error("형식을 알 수 없는 링크입니다");
+  return normalize({parties: o.p.map(function(a){
+    return {
+      name: a[0], weeks: a[1],
+      members: String(a[2] || "").split(",").filter(Boolean),
+      grey: !!a[3],
+      rows: (Array.isArray(a[4]) ? a[4] : []).map(function(r){
+        return {name:r[0], slot:r[1], color:r[2] || undefined,
+                note:r[3] || "", cells:String(r[4] || "").split("|")};
+      })
+    };
+  })});
+}
+function readShare(){
+  var m = /[#&]v=([A-Za-z0-9\-_]+)/.exec(location.hash || "");
+  if(!m) return null;
+  try{ return unpackShare(JSON.parse(b64d(m[1]))); }
+  catch(err){ shareErr = err && err.message ? err.message : "링크를 읽지 못했습니다"; return null; }
+}
+/* origin + pathname 은 file:/data: 에서 "null..." 이 된다 — href 에서 조각만 떼어낸다 */
+function baseUrl(){ return location.href.split("#")[0]; }
+function shareUrl(list){
+  return baseUrl() + "#v=" + b64e(JSON.stringify(packParties(list)));
+}
+var sT;
+function smsg(m){
+  var el = document.getElementById("sharemsg");
+  if(!el) return;
+  el.textContent = m; el.style.color = "var(--accent-ink)";
+  clearTimeout(sT);
+  sT = setTimeout(function(){ el.textContent = ""; }, 2600);
+}
+function makeShare(list, what){
+  var url;
+  try{ url = shareUrl(list); }
+  catch(err){ smsg("링크를 만들지 못했습니다"); return; }
+  var out = document.getElementById("shareout");
+  out.value = url;
+  document.getElementById("share-open").disabled = false;
+  var note = document.getElementById("sharelen");
+  note.innerHTML = what + " · 링크 길이 <b>" + url.length.toLocaleString() + "자</b>"
+    + (url.length > 8000
+       ? " — 메신저에 따라 잘릴 수 있습니다. 파티를 나눠 보내거나 백업 파일을 쓰세요."
+       : " — 받은 사람에게는 편집 버튼과 백업 기능이 보이지 않습니다.");
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(url)
+      .then(function(){ smsg("링크를 복사했습니다"); })
+      .catch(function(){ out.focus(); out.select(); smsg("Ctrl+C 로 복사하세요"); });
+  } else { out.focus(); out.select(); smsg("Ctrl+C 로 복사하세요"); }
+}
+if(!RO){
+  document.getElementById("share-one").onclick = function(){
+    makeShare([P()], "“" + P().name + "” 파티");
+  };
+  document.getElementById("share-all").onclick = function(){
+    makeShare(state.parties, "파티 " + state.parties.length + "개");
+  };
+  document.getElementById("share-open").onclick = function(){
+    var u = document.getElementById("shareout").value;
+    if(!u) return;
+    if(!window.open(u, "_blank", "noopener")) smsg("새 탭이 막혔습니다 — 링크를 직접 붙여 넣어 보세요");
+  };
+  document.getElementById("shareout").onclick = function(){ this.select(); };
+}
+
+/* ===== 읽기 전용 화면 ===== */
+if(RO){
+  document.body.classList.add("ro");
+  document.getElementById("meta-note").textContent = "공유 링크로 열린 화면입니다";
+}
+if(RO || shareErr){
+  var vb = document.getElementById("viewbar");
+  vb.hidden = false;
+  if(shareErr){
+    vb.classList.add("err");
+    document.getElementById("vb-title").textContent = "공유 링크를 읽지 못했습니다";
+    document.getElementById("vb-sub").textContent =
+      shareErr + " — 대신 이 브라우저에 저장된 내 기록을 보여 주고 있습니다.";
+    document.getElementById("vb-copy").hidden = true;
+    document.getElementById("vb-exit").textContent = "주소 정리";
+  } else {
+    document.getElementById("vb-sub").textContent =
+      "읽기 전용입니다 — 파티 " + state.parties.length + "개. "
+      + "여기서 고친 내용은 저장되지 않고, 내 기록도 그대로 남아 있습니다.";
+  }
+}
+document.getElementById("vb-exit").onclick = function(){
+  location.replace(baseUrl());
+};
+document.getElementById("vb-copy").onclick = function(){
+  if(!RO) return;
+  var mine;
+  try{ mine = load() || clone(DEFAULT_STATE); }catch(err){ mine = clone(DEFAULT_STATE); }
+  var names = state.parties.map(function(p){ return p.name; }).join(", ");
+  ask("내 기록에 파티 " + state.parties.length + "개를 추가합니다.\n" + names
+    + "\n\n지금 가지고 있는 파티 " + mine.parties.length + "개는 그대로 둡니다.", "추가", function(){
+    var taken = {};
+    mine.parties.forEach(function(p){ taken[p.id] = 1; });
+    var add = clone(state.parties);
+    add.forEach(function(p){
+      if(taken[p.id]) p.id = newId();
+      taken[p.id] = 1;
+      mine.parties.push(p);
+    });
+    mine.activeId = add[0].id;
+    try{ localStorage.setItem(KEY, JSON.stringify(mine)); }
+    catch(err){
+      document.getElementById("vb-sub").textContent =
+        "저장하지 못했습니다 — 브라우저 저장 공간을 확인해 주세요.";
+      return;
+    }
+    location.replace(baseUrl());
+  });
+};
 renderAll();
 addEventListener("resize", function(){ renderTrend(); renderTotals(); });
 })();
