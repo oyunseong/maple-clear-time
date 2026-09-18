@@ -73,6 +73,8 @@
 }
 
 *{box-sizing:border-box}
+/* .viewbar 처럼 display 를 지정한 요소는 UA 의 [hidden]{display:none} 을 이겨 버린다 */
+[hidden]{display:none !important;}
 body{
   margin:0; background:var(--bg); color:var(--ink);
   font-family:var(--font-ui);
